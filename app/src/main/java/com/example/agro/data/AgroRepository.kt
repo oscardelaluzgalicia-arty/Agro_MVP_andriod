@@ -11,11 +11,24 @@ class AgroRepository(private val tokenDao: TokenDao) {
         .build()
         .create(ApiService::class.java)
 
-    suspend fun login(username: String, password: String): Result<String> {
+    suspend fun login(username: String, password: String): Result<LoginResponse> {
         return try {
             val response = apiService.login(LoginRequest(username, password))
-            tokenDao.insertToken(TokenEntity(token = response.token))
-            Result.success(response.token)
+            
+            val tokenEntity = TokenEntity(token = response.token)
+            val moduleEntities = response.modulos.map { 
+                ModuleEntity(
+                    idModule = it.idModule,
+                    name = it.name,
+                    description = it.description,
+                    accessLevel = it.accessLevel,
+                    grantedAt = it.grantedAt
+                )
+            }
+            
+            tokenDao.clearAllAndInsert(tokenEntity, moduleEntities)
+            
+            Result.success(response)
         } catch (e: Exception) {
             Result.failure(e)
         }
@@ -25,7 +38,11 @@ class AgroRepository(private val tokenDao: TokenDao) {
         return tokenDao.getToken()?.token
     }
 
+    suspend fun getModules(): List<ModuleEntity> {
+        return tokenDao.getModules()
+    }
+
     suspend fun logout() {
-        tokenDao.deleteToken()
+        tokenDao.logout()
     }
 }

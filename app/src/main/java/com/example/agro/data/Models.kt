@@ -10,11 +10,29 @@ data class LoginRequest(
 )
 
 data class LoginResponse(
-    val token: String
+    val token: String,
+    val modulos: List<ModuleResponse>
+)
+
+data class ModuleResponse(
+    @SerializedName("id_module") val idModule: Int,
+    val name: String,
+    val description: String,
+    @SerializedName("access_level") val accessLevel: String,
+    @SerializedName("granted_at") val grantedAt: String
 )
 
 @Entity(tableName = "auth_token")
 data class TokenEntity(
     @PrimaryKey val id: Int = 0,
     val token: String
+)
+
+@Entity(tableName = "user_modules")
+data class ModuleEntity(
+    @PrimaryKey val idModule: Int,
+    val name: String,
+    val description: String,
+    val accessLevel: String,
+    val grantedAt: String
 )
