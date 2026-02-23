@@ -5,7 +5,16 @@ import androidx.room.Database
 import androidx.room.Room
 import androidx.room.RoomDatabase
 
-@Database(entities = [TokenEntity::class, ModuleEntity::class], version = 2)
+@Database(
+    entities = [
+        TokenEntity::class, 
+        ModuleEntity::class, 
+        ScientificNameResponse::class,
+        SuccessfulImportEntity::class,
+        OccurrenceEntity::class
+    ], 
+    version = 5
+)
 abstract class AppDatabase : RoomDatabase() {
     abstract fun tokenDao(): TokenDao
 
@@ -20,7 +29,7 @@ abstract class AppDatabase : RoomDatabase() {
                     AppDatabase::class.java,
                     "agro_database"
                 )
-                .fallbackToDestructiveMigration() // Para simplificar durante el desarrollo si cambias el esquema
+                .fallbackToDestructiveMigration()
                 .build()
                 INSTANCE = instance
                 instance

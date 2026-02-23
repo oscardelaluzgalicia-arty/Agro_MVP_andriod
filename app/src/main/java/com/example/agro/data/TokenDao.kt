@@ -38,5 +38,38 @@ interface TokenDao {
     suspend fun logout() {
         deleteToken()
         deleteModules()
+        deleteAllScientificNames()
+        deleteAllSuccessfulImports()
+        deleteAllOccurrences()
     }
+
+    // Para nombres científicos
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun insertScientificNames(names: List<ScientificNameResponse>)
+
+    @Query("SELECT * FROM scientific_names")
+    suspend fun getScientificNames(): List<ScientificNameResponse>
+
+    @Query("DELETE FROM scientific_names")
+    suspend fun deleteAllScientificNames()
+
+    // Para importaciones exitosas
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun insertSuccessfulImport(successfulImport: SuccessfulImportEntity)
+
+    @Query("SELECT * FROM successful_imports")
+    suspend fun getSuccessfulImports(): List<SuccessfulImportEntity>
+
+    @Query("DELETE FROM successful_imports")
+    suspend fun deleteAllSuccessfulImports()
+
+    // Para ocurrencias
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun insertOccurrences(occurrences: List<OccurrenceEntity>)
+
+    @Query("SELECT * FROM occurrences")
+    suspend fun getOccurrences(): List<OccurrenceEntity>
+
+    @Query("DELETE FROM occurrences")
+    suspend fun deleteAllOccurrences()
 }
