@@ -11,8 +11,8 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.AccountBox
-import androidx.compose.material.icons.filled.Favorite
 import androidx.compose.material.icons.filled.Home
+import androidx.compose.material.icons.filled.Public
 import androidx.compose.material3.Button
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
@@ -29,13 +29,17 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.tooling.preview.Preview
+import androidx.compose.ui.unit.dp
 import com.example.agro.data.AgroRepository
 import com.example.agro.data.AppDatabase
+import com.example.agro.ui.HomeScreen
+import com.example.agro.ui.HomeViewModel
+import com.example.agro.ui.HomeViewModelFactory
 import com.example.agro.ui.LoginScreen
 import com.example.agro.ui.LoginViewModel
 import com.example.agro.ui.LoginViewModelFactory
+import com.example.agro.ui.MapScreen
 import com.example.agro.ui.theme.AgroTheme
-import androidx.compose.ui.unit.dp
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -43,25 +47,29 @@ class MainActivity : ComponentActivity() {
         
         val database = AppDatabase.getDatabase(this)
         val repository = AgroRepository(database.tokenDao())
-        val viewModel: LoginViewModel by viewModels { LoginViewModelFactory(repository) }
+        val loginViewModel: LoginViewModel by viewModels { LoginViewModelFactory(repository) }
+        val homeViewModel: HomeViewModel by viewModels { HomeViewModelFactory(repository) }
 
         enableEdgeToEdge()
         setContent {
             AgroTheme {
-                val isLoggedIn by viewModel.isLoggedIn.collectAsState()
+                val isLoggedIn by loginViewModel.isLoggedIn.collectAsState()
 
                 when (isLoggedIn) {
                     null -> {
-                        // Pantalla de carga inicial mientras se verifica el token
                         Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
                             CircularProgressIndicator()
                         }
                     }
                     false -> {
-                        LoginScreen(viewModel = viewModel)
+                        LoginScreen(viewModel = loginViewModel)
                     }
                     true -> {
-                        AgroApp(onLogout = { viewModel.logout() })
+                        AgroApp(
+                            repository = repository,
+                            homeViewModel = homeViewModel,
+                            onLogout = { loginViewModel.logout() }
+                        )
                     }
                 }
             }
@@ -70,7 +78,7 @@ class MainActivity : ComponentActivity() {
 }
 
 @Composable
-fun AgroApp(onLogout: () -> Unit) {
+fun AgroApp(repository: AgroRepository, homeViewModel: HomeViewModel, onLogout: () -> Unit) {
     var currentDestination by rememberSaveable { mutableStateOf(AppDestinations.HOME) }
 
     NavigationSuiteScaffold(
@@ -93,8 +101,11 @@ fun AgroApp(onLogout: () -> Unit) {
         Scaffold(modifier = Modifier.fillMaxSize()) { innerPadding ->
             Box(modifier = Modifier.padding(innerPadding)) {
                 when (currentDestination) {
-                    AppDestinations.HOME -> Greeting("Home")
-                    AppDestinations.FAVORITES -> Greeting("Favorites")
+                    AppDestinations.HOME -> HomeScreen(
+                        viewModel = homeViewModel,
+                        onNavigateToMap = { currentDestination = AppDestinations.MAPA }
+                    )
+                    AppDestinations.MAPA -> MapScreen(repository = repository)
                     AppDestinations.PROFILE -> ProfileScreen(onLogout = onLogout)
                 }
             }
@@ -122,7 +133,7 @@ enum class AppDestinations(
     val icon: ImageVector,
 ) {
     HOME("Home", Icons.Default.Home),
-    FAVORITES("Favorites", Icons.Default.Favorite),
+    MAPA("Mapa", Icons.Default.Public),
     PROFILE("Profile", Icons.Default.AccountBox),
 }
 
