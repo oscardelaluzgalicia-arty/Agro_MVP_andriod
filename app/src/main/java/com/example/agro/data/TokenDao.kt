@@ -41,6 +41,9 @@ interface TokenDao {
         deleteAllScientificNames()
         deleteAllSuccessfulImports()
         deleteAllOccurrences()
+        deleteAllClimateRequirements()
+        deleteAllSpecies()
+        deleteAllNiches()
     }
 
     // Para nombres científicos
@@ -72,4 +75,40 @@ interface TokenDao {
 
     @Query("DELETE FROM occurrences")
     suspend fun deleteAllOccurrences()
+
+    @Query("SELECT DISTINCT state_province FROM occurrences WHERE state_province IS NOT NULL AND state_province != ''")
+    suspend fun getDistinctStates(): List<String>
+
+    @Query("SELECT DISTINCT id_species FROM occurrences WHERE state_province = :state")
+    suspend fun getSpeciesIdsByState(state: String): List<Int>
+
+    // Para requisitos climáticos (CRUD)
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun insertClimateRequirements(requirements: List<ClimateRequirementEntity>)
+
+    @Query("SELECT * FROM climate_requirements")
+    suspend fun getClimateRequirements(): List<ClimateRequirementEntity>
+
+    @Query("DELETE FROM climate_requirements")
+    suspend fun deleteAllClimateRequirements()
+
+    // Para Especies
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun insertSpecies(species: List<SpeciesEntity>)
+
+    @Query("SELECT * FROM species")
+    suspend fun getSavedSpecies(): List<SpeciesEntity>
+
+    @Query("DELETE FROM species")
+    suspend fun deleteAllSpecies()
+
+    // Para Nichos Climáticos (Calculados)
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun insertNiche(niche: SpeciesNicheEntity)
+
+    @Query("SELECT * FROM species_niches WHERE id_species = :idSpecies")
+    suspend fun getNicheForSpecies(idSpecies: Int): SpeciesNicheEntity?
+
+    @Query("DELETE FROM species_niches")
+    suspend fun deleteAllNiches()
 }

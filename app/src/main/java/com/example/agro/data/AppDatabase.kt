@@ -11,9 +11,12 @@ import androidx.room.RoomDatabase
         ModuleEntity::class, 
         ScientificNameResponse::class,
         SuccessfulImportEntity::class,
-        OccurrenceEntity::class
+        OccurrenceEntity::class,
+        ClimateRequirementEntity::class,
+        SpeciesEntity::class,
+        SpeciesNicheEntity::class
     ], 
-    version = 5
+    version = 8
 )
 abstract class AppDatabase : RoomDatabase() {
     abstract fun tokenDao(): TokenDao
