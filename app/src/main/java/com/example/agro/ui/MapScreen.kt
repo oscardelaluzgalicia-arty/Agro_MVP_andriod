@@ -7,6 +7,8 @@ import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Close
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -70,32 +72,48 @@ fun MapScreen(repository: AgroRepository) {
 fun MapWithSearch(repository: AgroRepository) {
     var importedSpecies by remember { mutableStateOf<List<SuccessfulImportEntity>>(emptyList()) }
     var selectedSpecies by remember { mutableStateOf<SuccessfulImportEntity?>(null) }
-    var occurrences by remember { mutableStateOf<List<OccurrenceEntity>>(emptyList()) }
-    var expanded by remember { mutableStateOf(false) }
+    var allOccurrences by remember { mutableStateOf<List<OccurrenceEntity>>(emptyList()) }
+    var filteredOccurrences by remember { mutableStateOf<List<OccurrenceEntity>>(emptyList()) }
+    
+    var availableStates by remember { mutableStateOf<List<String>>(emptyList()) }
+    var selectedState by remember { mutableStateOf<String?>(null) }
+    
+    var expandedSpecies by remember { mutableStateOf(false) }
+    var expandedStates by remember { mutableStateOf(false) }
     var isLoading by remember { mutableStateOf(false) }
 
-    // Cargar especies importadas al iniciar
+    // Cargar especies importadas
     LaunchedEffect(Unit) {
         importedSpecies = repository.getSuccessfulImports()
     }
 
-    // Cargar ocurrencias cuando cambia la especie seleccionada
+    // Cargar todas las ocurrencias de la especie seleccionada
     LaunchedEffect(selectedSpecies) {
         selectedSpecies?.let { species ->
             isLoading = true
             val result = repository.fetchOccurrences(species.idSpecies)
             if (result.isSuccess) {
-                occurrences = result.getOrDefault(emptyList())
+                allOccurrences = result.getOrDefault(emptyList())
+                availableStates = allOccurrences.mapNotNull { it.stateProvince }.distinct().sorted()
+                selectedState = null // Resetear filtro al cambiar de especie
+                filteredOccurrences = allOccurrences
             }
             isLoading = false
         }
     }
 
-    Box(modifier = Modifier.fillMaxSize()) {
-        // El mapa va al fondo
-        GoogleMapContainer(repository, occurrences)
+    // Filtrar localmente cuando cambia el estado seleccionado
+    LaunchedEffect(selectedState, allOccurrences) {
+        filteredOccurrences = if (selectedState == null) {
+            allOccurrences
+        } else {
+            allOccurrences.filter { it.stateProvince == selectedState }
+        }
+    }
 
-        // Buscador superpuesto con fondo para visibilidad
+    Box(modifier = Modifier.fillMaxSize()) {
+        GoogleMapContainer(repository, filteredOccurrences)
+
         Column(
             modifier = Modifier
                 .fillMaxWidth()
@@ -104,16 +122,17 @@ fun MapWithSearch(repository: AgroRepository) {
                 .background(MaterialTheme.colorScheme.surface.copy(alpha = 0.9f), MaterialTheme.shapes.medium)
                 .padding(8.dp)
         ) {
+            // Selector de Especies
             ExposedDropdownMenuBox(
-                expanded = expanded,
-                onExpandedChange = { expanded = !expanded }
+                expanded = expandedSpecies,
+                onExpandedChange = { expandedSpecies = !expandedSpecies }
             ) {
                 TextField(
-                    value = selectedSpecies?.query ?: "Seleccionar especie...",
+                    value = selectedSpecies?.commonName ?: "Seleccionar especie...",
                     onValueChange = {},
                     readOnly = true,
-                    label = { Text("Especies Importadas") },
-                    trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = expanded) },
+                    label = { Text("Especie") },
+                    trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = expandedSpecies) },
                     modifier = Modifier.menuAnchor().fillMaxWidth(),
                     colors = TextFieldDefaults.colors(
                         focusedContainerColor = Color.Transparent,
@@ -121,27 +140,72 @@ fun MapWithSearch(repository: AgroRepository) {
                     )
                 )
                 ExposedDropdownMenu(
-                    expanded = expanded,
-                    onDismissRequest = { expanded = false }
+                    expanded = expandedSpecies,
+                    onDismissRequest = { expandedSpecies = false }
                 ) {
-                    if (importedSpecies.isEmpty()) {
+                    importedSpecies.forEach { species ->
                         DropdownMenuItem(
-                            text = { Text("No hay especies importadas") },
-                            onClick = { expanded = false }
+                            text = { Text("${species.commonName} (${species.query})") },
+                            onClick = {
+                                selectedSpecies = species
+                                expandedSpecies = false
+                            }
                         )
-                    } else {
-                        importedSpecies.forEach { species ->
+                    }
+                }
+            }
+
+            // Selector de Estados (Solo aparece si hay especie seleccionada)
+            if (selectedSpecies != null) {
+                Spacer(modifier = Modifier.height(8.dp))
+                ExposedDropdownMenuBox(
+                    expanded = expandedStates,
+                    onExpandedChange = { expandedStates = !expandedStates }
+                ) {
+                    TextField(
+                        value = selectedState ?: "Todos los estados",
+                        onValueChange = {},
+                        readOnly = true,
+                        label = { Text("Filtrar por Estado") },
+                        trailingIcon = {
+                            if (selectedState != null) {
+                                IconButton(onClick = { selectedState = null }) {
+                                    Icon(Icons.Default.Close, contentDescription = "Limpiar")
+                                }
+                            } else {
+                                ExposedDropdownMenuDefaults.TrailingIcon(expanded = expandedStates)
+                            }
+                        },
+                        modifier = Modifier.menuAnchor().fillMaxWidth(),
+                        colors = TextFieldDefaults.colors(
+                            focusedContainerColor = Color.Transparent,
+                            unfocusedContainerColor = Color.Transparent
+                        )
+                    )
+                    ExposedDropdownMenu(
+                        expanded = expandedStates,
+                        onDismissRequest = { expandedStates = false }
+                    ) {
+                        DropdownMenuItem(
+                            text = { Text("Todos los estados") },
+                            onClick = {
+                                selectedState = null
+                                expandedStates = false
+                            }
+                        )
+                        availableStates.forEach { state ->
                             DropdownMenuItem(
-                                text = { Text("${species.commonName} (${species.query})") },
+                                text = { Text(state) },
                                 onClick = {
-                                    selectedSpecies = species
-                                    expanded = false
+                                    selectedState = state
+                                    expandedStates = false
                                 }
                             )
                         }
                     }
                 }
             }
+            
             if (isLoading) {
                 LinearProgressIndicator(modifier = Modifier.fillMaxWidth().padding(top = 4.dp))
             }
@@ -198,7 +262,7 @@ private fun updateMarkers(googleMap: GoogleMap, occurrences: List<OccurrenceEnti
             MarkerOptions()
                 .position(pos)
                 .title("Ocurrencia")
-                .snippet("Registrado por: ${occurrence.recordedBy ?: "N/A"}")
+                .snippet("Estado: ${occurrence.stateProvince ?: "N/A"}")
         )
         builder.include(pos)
     }

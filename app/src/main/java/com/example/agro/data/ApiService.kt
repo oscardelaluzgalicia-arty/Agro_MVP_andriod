@@ -15,6 +15,12 @@ interface SemanticApiService {
         @Header("Authorization") token: String,
         @Body request: ResolveNameRequest
     ): ResolveNameResponse
+
+    @POST("api/v1/semantic/resolve-common-name-batch")
+    suspend fun resolveCommonNameBatch(
+        @Header("Authorization") token: String,
+        @Body request: ResolveNameBatchRequest
+    ): List<ResolveNameResponse>
 }
 
 interface ImportApiService {
@@ -31,4 +37,24 @@ interface CrudApiService {
         @Header("Authorization") token: String,
         @Body request: CrudRequest
     ): List<OccurrenceEntity>
+
+    @POST("api/v1/crud")
+    suspend fun getClimateRequirements(
+        @Header("Authorization") token: String,
+        @Body request: CrudRequest
+    ): List<ClimateRequirementEntity>
+
+    @POST("api/v1/crud")
+    suspend fun getAllSpecies(
+        @Header("Authorization") token: String,
+        @Body request: CrudRequest
+    ): List<SpeciesEntity>
+}
+
+interface ClimaticApiService {
+    @POST("api/v1/climatic/calculate-and-save")
+    suspend fun calculateAndSaveNiche(
+        @Header("Authorization") token: String,
+        @Body request: CalculateNicheRequest
+    ): NicheResponse
 }
