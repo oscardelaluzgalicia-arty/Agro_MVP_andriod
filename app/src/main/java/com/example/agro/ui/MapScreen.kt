@@ -40,6 +40,7 @@ fun MapScreen(repository: AgroRepository) {
         )
     }
 
+
     val launcher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.RequestMultiplePermissions(),
         onResult = { permissions ->
