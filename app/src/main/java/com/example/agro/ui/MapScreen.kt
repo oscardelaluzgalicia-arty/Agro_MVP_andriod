@@ -118,6 +118,8 @@ fun MapWithSearch(repository: AgroRepository, primaryGreen: Color, secondaryGree
     var expandedStates by remember { mutableStateOf(false) }
     var isLoading by remember { mutableStateOf(false) }
 
+    val fixedDarkText = Color(0xFF1C1B1F)
+
     LaunchedEffect(Unit) {
         importedSpecies = repository.getSuccessfulImports()
     }
@@ -154,8 +156,8 @@ fun MapWithSearch(repository: AgroRepository, primaryGreen: Color, secondaryGree
                 .padding(16.dp)
                 .align(Alignment.TopCenter),
             shape = RoundedCornerShape(24.dp),
-            colors = CardDefaults.cardColors(containerColor = Color.White.copy(alpha = 0.95f)),
-            elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
+            colors = CardDefaults.cardColors(containerColor = Color.White),
+            elevation = CardDefaults.cardElevation(defaultElevation = 6.dp)
         ) {
             Column(modifier = Modifier.padding(16.dp)) {
                 Text(
@@ -163,7 +165,7 @@ fun MapWithSearch(repository: AgroRepository, primaryGreen: Color, secondaryGree
                     style = MaterialTheme.typography.titleSmall,
                     color = primaryGreen,
                     fontWeight = FontWeight.Bold,
-                    modifier = Modifier.padding(bottom = 8.dp)
+                    modifier = Modifier.padding(bottom = 12.dp)
                 )
 
                 // Selector de Especies
@@ -172,28 +174,38 @@ fun MapWithSearch(repository: AgroRepository, primaryGreen: Color, secondaryGree
                     onExpandedChange = { expandedSpecies = it }
                 ) {
                     OutlinedTextField(
-                        value = selectedSpecies?.commonName ?: "Seleccionar especie...",
+                        value = selectedSpecies?.commonName ?: "",
                         onValueChange = {},
                         readOnly = true,
                         label = { Text("Especie", color = primaryGreen) },
+                        placeholder = { Text("Seleccionar especie...", color = Color.Gray) },
                         trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = expandedSpecies) },
                         modifier = Modifier.menuAnchor().fillMaxWidth(),
                         shape = RoundedCornerShape(12.dp),
                         colors = OutlinedTextFieldDefaults.colors(
                             focusedBorderColor = primaryGreen,
                             unfocusedBorderColor = Color.LightGray,
-                            focusedContainerColor = Color.White,
-                            unfocusedContainerColor = Color.White
+                            focusedContainerColor = Color(0xFFF9F9F9),
+                            unfocusedContainerColor = Color(0xFFF9F9F9),
+                            focusedTextColor = fixedDarkText,
+                            unfocusedTextColor = fixedDarkText
                         )
                     )
                     MaterialTheme(colorScheme = MaterialTheme.colorScheme.copy(surface = Color.White)) {
                         ExposedDropdownMenu(
                             expanded = expandedSpecies,
-                            onDismissRequest = { expandedSpecies = false }
+                            onDismissRequest = { expandedSpecies = false },
+                            modifier = Modifier.background(Color.White)
                         ) {
                             importedSpecies.forEach { species ->
                                 DropdownMenuItem(
-                                    text = { Text("${species.commonName} (${species.query})", color = Color(0xFF1C1B1F)) },
+                                    text = { 
+                                        Text(
+                                            text = "${species.commonName} (${species.query})", 
+                                            color = fixedDarkText,
+                                            fontWeight = FontWeight.Medium
+                                        ) 
+                                    },
                                     onClick = {
                                         selectedSpecies = species
                                         expandedSpecies = false
@@ -229,17 +241,20 @@ fun MapWithSearch(repository: AgroRepository, primaryGreen: Color, secondaryGree
                             colors = OutlinedTextFieldDefaults.colors(
                                 focusedBorderColor = primaryGreen,
                                 unfocusedBorderColor = Color.LightGray,
-                                focusedContainerColor = Color.White,
-                                unfocusedContainerColor = Color.White
+                                focusedContainerColor = Color(0xFFF9F9F9),
+                                unfocusedContainerColor = Color(0xFFF9F9F9),
+                                focusedTextColor = fixedDarkText,
+                                unfocusedTextColor = fixedDarkText
                             )
                         )
                         MaterialTheme(colorScheme = MaterialTheme.colorScheme.copy(surface = Color.White)) {
                             ExposedDropdownMenu(
                                 expanded = expandedStates,
-                                onDismissRequest = { expandedStates = false }
+                                onDismissRequest = { expandedStates = false },
+                                modifier = Modifier.background(Color.White)
                             ) {
                                 DropdownMenuItem(
-                                    text = { Text("Todos los estados", color = Color(0xFF1C1B1F)) },
+                                    text = { Text("Todos los estados", color = fixedDarkText, fontWeight = FontWeight.Medium) },
                                     onClick = {
                                         selectedState = null
                                         expandedStates = false
@@ -247,7 +262,7 @@ fun MapWithSearch(repository: AgroRepository, primaryGreen: Color, secondaryGree
                                 )
                                 availableStates.forEach { state ->
                                     DropdownMenuItem(
-                                        text = { Text(state, color = Color(0xFF1C1B1F)) },
+                                        text = { Text(state, color = fixedDarkText, fontWeight = FontWeight.Medium) },
                                         onClick = {
                                             selectedState = state
                                             expandedStates = false
@@ -260,7 +275,7 @@ fun MapWithSearch(repository: AgroRepository, primaryGreen: Color, secondaryGree
                 }
                 
                 if (isLoading) {
-                    Spacer(modifier = Modifier.height(8.dp))
+                    Spacer(modifier = Modifier.height(12.dp))
                     LinearProgressIndicator(
                         modifier = Modifier.fillMaxWidth(),
                         color = primaryGreen,
