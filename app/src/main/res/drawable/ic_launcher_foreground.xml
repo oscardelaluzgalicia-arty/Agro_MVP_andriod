@@ -12,3 +12,14 @@
         android:fillColor="#2E7D32"/>
   </group>
 </vector>
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+    <!-- Fondo circular para el tractor -->
+    <path
+        android:fillColor="#2E7D32"
+        android:pathData="M54,54m-40,0a40,40 0,1 1,80 0a40,40 0,1 1,-80 0" />
+    <!-- Trayectoria del Tractor (Escalado del icono Agriculture) -->
+    <path
+        android:fillColor="#FFFFFF"
+        android:pathData="M78,48v-9H30v9c-3.3,0 -6,2.7 -6,6v15h6c0,5 4,9 9,9s9,-4 9,-9h12c0,5 4,9 9,9s9,-4 9,-9h6v-15C84,50.7 81.3,48 78,48zM39,72c-1.65,0 -3,-1.35 -3,-3s1.35,-3 3,-3s3,1.35 3,3S40.65,72 39,72zM69,72c-1.65,0 -3,-1.35 -3,-3s1.35,-3 3,-3s3,1.35 3,3S70.65,72 69,72zM63,60H33v-6h30V60zM75,60h-6v-6h6V60z" />
+</vector>
