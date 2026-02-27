@@ -11,6 +11,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.AccountBox
+import androidx.compose.material.icons.filled.Agriculture
 import androidx.compose.material.icons.filled.Public
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.Spa
@@ -42,6 +43,7 @@ import com.example.agro.ui.LoginViewModelFactory
 import com.example.agro.ui.MapScreen
 import com.example.agro.ui.SearchScreen
 import com.example.agro.ui.SpeciesScreen
+import com.example.agro.ui.WelcomeScreen
 import com.example.agro.ui.theme.AgroTheme
 
 class MainActivity : ComponentActivity() {
@@ -80,17 +82,21 @@ class MainActivity : ComponentActivity() {
 
 @Composable
 fun AgroApp(repository: AgroRepository, onLogout: () -> Unit) {
-    var currentDestination by rememberSaveable { mutableStateOf(AppDestinations.BUSQUEDA) }
+    var currentDestination by rememberSaveable { mutableStateOf(AppDestinations.WELCOME) }
 
     if (currentDestination == AppDestinations.SEARCH_SCIENTIFIC) {
         SearchScreen(
             repository = repository,
             onBack = { currentDestination = AppDestinations.SPECIES }
         )
+    } else if (currentDestination == AppDestinations.WELCOME) {
+        WelcomeScreen(
+            onStartInvestigating = { currentDestination = AppDestinations.SEARCH_SCIENTIFIC }
+        )
     } else {
         NavigationSuiteScaffold(
             navigationSuiteItems = {
-                AppDestinations.entries.filter { !it.isSearch }.forEach {
+                AppDestinations.entries.filter { !it.isSearch && it != AppDestinations.WELCOME }.forEach {
                     item(
                         icon = {
                             Icon(
@@ -147,6 +153,7 @@ enum class AppDestinations(
     val icon: ImageVector,
     val isSearch: Boolean = false
 ) {
+    WELCOME("Inicio", Icons.Default.Agriculture),
     BUSQUEDA("Búsqueda", Icons.Default.Search),
     MAPA("Mapa", Icons.Default.Public),
     CLIMATE("Nichos", Icons.Filled.Thermostat),
