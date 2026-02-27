@@ -4,16 +4,20 @@ import android.util.Log
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Thermostat
-import androidx.compose.material.icons.filled.WaterDrop
-import androidx.compose.material.icons.filled.Landscape
+import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.agro.data.AgroRepository
@@ -29,132 +33,162 @@ fun ClimateScreen(repository: AgroRepository) {
     var importedSpecies by remember { mutableStateOf<List<SuccessfulImportEntity>>(emptyList()) }
     var selectedSpecies by remember { mutableStateOf<SuccessfulImportEntity?>(null) }
     var nicheData by remember { mutableStateOf<SpeciesNicheEntity?>(null) }
-    
+
     var expanded by remember { mutableStateOf(false) }
     var isLoading by remember { mutableStateOf(false) }
     val coroutineScope = rememberCoroutineScope()
     val snackbarHostState = remember { SnackbarHostState() }
 
+    // Colores fijos profesionales
+    val primaryGreen = Color(0xFF2E7D32)
+    val secondaryGreen = Color(0xFFE8F5E9)
+    val fixedDarkText = Color(0xFF1C1B1F)
+    val fixedGrayText = Color(0xFF49454F)
+
     LaunchedEffect(Unit) {
-        Log.d(TAG, "Iniciando ClimateScreen: Cargando especies importadas")
         importedSpecies = repository.getSuccessfulImports()
-        Log.d(TAG, "Especies cargadas: ${importedSpecies.size}")
     }
 
     LaunchedEffect(selectedSpecies) {
         selectedSpecies?.let {
-            Log.d(TAG, "Especie seleccionada: ${it.commonName} (ID: ${it.idSpecies})")
             nicheData = repository.getSavedNiche(it.idSpecies)
-            if (nicheData != null) {
-                Log.d(TAG, "Nicho cargado desde base de datos local")
-            }
         }
     }
 
     Scaffold(
-        snackbarHost = { SnackbarHost(snackbarHostState) }
+        snackbarHost = { SnackbarHost(snackbarHostState) },
+        containerColor = Color.Transparent
     ) { paddingValues ->
-        Box(modifier = Modifier.fillMaxSize().padding(paddingValues)) {
-            Column(modifier = Modifier.padding(16.dp)) {
-                Text("Gestión de Nicho Climático", style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Bold)
-                Text("Genera y analiza el nicho basado en datos de GBIF", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.secondary)
-                
-                Spacer(modifier = Modifier.height(16.dp))
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .background(Brush.verticalGradient(listOf(secondaryGreen, Color.White)))
+                .padding(paddingValues)
+        ) {
+            Column(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(horizontal = 20.dp)
+            ) {
+                Spacer(modifier = Modifier.height(24.dp))
 
-                // Selector de Especies
-                ExposedDropdownMenuBox(
-                    expanded = expanded,
-                    onExpandedChange = { expanded = !expanded }
-                ) {
-                    TextField(
-                        value = selectedSpecies?.commonName ?: "Seleccionar especie...",
-                        onValueChange = {},
-                        readOnly = true,
-                        label = { Text("Especies Importadas") },
-                        trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = expanded) },
-                        modifier = Modifier.menuAnchor().fillMaxWidth()
+                // Cabecera Profesional
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Icon(Icons.Default.CloudQueue, contentDescription = null, tint = primaryGreen, modifier = Modifier.size(32.dp))
+                    Spacer(modifier = Modifier.width(12.dp))
+                    Text(
+                        "Análisis de Nicho",
+                        style = MaterialTheme.typography.headlineMedium,
+                        fontWeight = FontWeight.ExtraBold,
+                        color = primaryGreen
                     )
-                    ExposedDropdownMenu(
-                        expanded = expanded,
-                        onDismissRequest = { expanded = false }
-                    ) {
-                        importedSpecies.forEach { species ->
-                            DropdownMenuItem(
-                                text = { Text("${species.commonName} (${species.query})") },
-                                onClick = {
-                                    selectedSpecies = species
-                                    expanded = false
-                                }
-                            )
-                        }
-                    }
                 }
+                Text("Modelado climático basado en datos GBIF", color = fixedGrayText, style = MaterialTheme.typography.bodyMedium)
 
-                Spacer(modifier = Modifier.height(16.dp))
+                Spacer(modifier = Modifier.height(24.dp))
 
-                Button(
-                    onClick = {
-                        selectedSpecies?.let {
-                            Log.d(TAG, "Botón clickeado: Generando nicho para ID: ${it.idSpecies}, sample_size: 30")
-                            isLoading = true
-                            coroutineScope.launch {
-                                try {
-                                    val result = repository.calculateAndSaveNiche(it.idSpecies, 30)
-                                    if (result.isSuccess) {
-                                        Log.d(TAG, "Éxito: Nicho generado y guardado")
-                                        nicheData = repository.getSavedNiche(it.idSpecies)
-                                        snackbarHostState.showSnackbar("Nicho generado correctamente")
-                                    } else {
-                                        val error = result.exceptionOrNull()?.message ?: "Error desconocido"
-                                        Log.e(TAG, "Error en el repositorio: $error")
-                                        snackbarHostState.showSnackbar("Error: $error")
-                                    }
-                                } catch (e: Exception) {
-                                    Log.e(TAG, "Excepción atrapada en UI: ${e.message}", e)
-                                    snackbarHostState.showSnackbar("Excepción: ${e.message}")
-                                } finally {
-                                    isLoading = false
+                // TARJETA DE CONFIGURACIÓN
+                Card(
+                    shape = RoundedCornerShape(24.dp),
+                    colors = CardDefaults.cardColors(containerColor = Color.White),
+                    elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
+                ) {
+                    Column(modifier = Modifier.padding(20.dp)) {
+                        Text("1. Selecciona el Cultivo", style = MaterialTheme.typography.labelLarge, color = primaryGreen, fontWeight = FontWeight.Bold)
+                        Spacer(modifier = Modifier.height(12.dp))
+
+                        ExposedDropdownMenuBox(
+                            expanded = expanded,
+                            onExpandedChange = { expanded = !expanded }
+                        ) {
+                            OutlinedTextField(
+                                value = selectedSpecies?.commonName ?: "Seleccionar especie...",
+                                onValueChange = {},
+                                readOnly = true,
+                                textStyle = LocalTextStyle.current.copy(color = fixedDarkText),
+                                trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = expanded) },
+                                modifier = Modifier.menuAnchor().fillMaxWidth(),
+                                shape = RoundedCornerShape(16.dp),
+                                colors = OutlinedTextFieldDefaults.colors(
+                                    focusedBorderColor = primaryGreen,
+                                    unfocusedBorderColor = Color.LightGray,
+                                    focusedContainerColor = Color(0xFFF9F9F9),
+                                    unfocusedContainerColor = Color(0xFFF9F9F9)
+                                )
+                            )
+                            ExposedDropdownMenu(
+                                expanded = expanded,
+                                onDismissRequest = { expanded = false },
+                                modifier = Modifier.background(Color.White)
+                            ) {
+                                importedSpecies.forEach { species ->
+                                    DropdownMenuItem(
+                                        text = { Text("${species.commonName} (${species.query})", color = fixedDarkText) },
+                                        onClick = {
+                                            selectedSpecies = species
+                                            expanded = false
+                                        }
+                                    )
                                 }
                             }
                         }
-                    },
-                    enabled = selectedSpecies != null && !isLoading,
-                    modifier = Modifier.fillMaxWidth()
-                ) {
-                    Text("Generar Nicho Inteligente")
+
+                        Spacer(modifier = Modifier.height(20.dp))
+
+                        Button(
+                            onClick = {
+                                selectedSpecies?.let {
+                                    isLoading = true
+                                    coroutineScope.launch {
+                                        val result = repository.calculateAndSaveNiche(it.idSpecies, 30)
+                                        if (result.isSuccess) {
+                                            nicheData = repository.getSavedNiche(it.idSpecies)
+                                            snackbarHostState.showSnackbar("Nicho generado con éxito")
+                                        }
+                                        isLoading = false
+                                    }
+                                }
+                            },
+                            enabled = selectedSpecies != null && !isLoading,
+                            modifier = Modifier.fillMaxWidth().height(56.dp),
+                            shape = RoundedCornerShape(16.dp),
+                            colors = ButtonDefaults.buttonColors(containerColor = primaryGreen)
+                        ) {
+                            Icon(Icons.Default.AutoGraph, contentDescription = null)
+                            Spacer(modifier = Modifier.width(8.dp))
+                            Text("GENERAR MODELO CLIMÁTICO", fontWeight = FontWeight.Bold)
+                        }
+                    }
                 }
 
                 Spacer(modifier = Modifier.height(24.dp))
 
+                // VISTA DE RESULTADOS
                 if (nicheData != null) {
-                    NicheDetailView(nicheData!!)
+                    NicheDetailView(nicheData!!, primaryGreen, fixedDarkText, fixedGrayText)
                 } else if (selectedSpecies != null && !isLoading) {
-                    Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                        Text("No hay datos de nicho calculados para esta especie.", style = MaterialTheme.typography.bodyMedium)
-                    }
+                    EmptyNicheState(fixedGrayText)
                 }
             }
 
-            // Indicador de carga a pantalla completa
+            // Overlay de Carga Profesional
             if (isLoading) {
                 Box(
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .background(Color.Black.copy(alpha = 0.4f)),
+                    modifier = Modifier.fillMaxSize().background(Color.Black.copy(alpha = 0.4f)),
                     contentAlignment = Alignment.Center
                 ) {
                     Card(
-                        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
-                        elevation = CardDefaults.cardElevation(defaultElevation = 8.dp)
+                        shape = RoundedCornerShape(28.dp),
+                        colors = CardDefaults.cardColors(containerColor = Color.White)
                     ) {
                         Column(
-                            modifier = Modifier.padding(24.dp),
+                            modifier = Modifier.padding(32.dp),
                             horizontalAlignment = Alignment.CenterHorizontally
                         ) {
-                            CircularProgressIndicator()
-                            Spacer(modifier = Modifier.height(16.dp))
-                            Text("Calculando nicho climático...", fontWeight = FontWeight.Bold)
-                            Text("Consultando datos satelitales", style = MaterialTheme.typography.bodySmall)
+                            CircularProgressIndicator(color = primaryGreen)
+                            Spacer(modifier = Modifier.height(20.dp))
+                            Text("Analizando Nicho...", fontWeight = FontWeight.Bold, color = fixedDarkText)
+                            Text("Procesando datos geoespaciales", style = MaterialTheme.typography.bodySmall, color = fixedGrayText)
                         }
                     }
                 }
@@ -164,11 +198,13 @@ fun ClimateScreen(repository: AgroRepository) {
 }
 
 @Composable
-fun NicheDetailView(niche: SpeciesNicheEntity) {
-    LazyColumn(verticalArrangement = Arrangement.spacedBy(16.dp)) {
-        item {
-            ClimateSummaryCard(niche)
-        }
+fun NicheDetailView(niche: SpeciesNicheEntity, primaryGreen: Color, darkText: Color, grayText: Color) {
+    LazyColumn(
+        verticalArrangement = Arrangement.spacedBy(16.dp),
+        contentPadding = PaddingValues(bottom = 32.dp)
+    ) {
+        item { ClimateSummaryCard(niche, primaryGreen) }
+
         item {
             NicheFactorCard(
                 title = "Temperatura",
@@ -179,9 +215,11 @@ fun NicheDetailView(niche: SpeciesNicheEntity) {
                 optMax = niche.temp_opt_max,
                 max = niche.temp_max,
                 unit = "°C",
-                description = "Se encuentra principalmente entre ${niche.temp_opt_min}° y ${niche.temp_opt_max}°C"
+                darkText = darkText,
+                grayText = grayText
             )
         }
+
         item {
             NicheFactorCard(
                 title = "Precipitación",
@@ -192,9 +230,11 @@ fun NicheDetailView(niche: SpeciesNicheEntity) {
                 optMax = niche.rainfall_opt_max,
                 max = niche.rainfall_max,
                 unit = "mm",
-                description = "Rango más favorable: ${niche.rainfall_opt_min} - ${niche.rainfall_opt_max} mm"
+                darkText = darkText,
+                grayText = grayText
             )
         }
+
         item {
             NicheFactorCard(
                 title = "Altitud",
@@ -205,15 +245,25 @@ fun NicheDetailView(niche: SpeciesNicheEntity) {
                 optMax = niche.altitude_max,
                 max = niche.altitude_max,
                 unit = "msnm",
-                description = "Rango de elevación observado: ${niche.altitude_min.toInt()} - ${niche.altitude_max.toInt()} msnm"
+                darkText = darkText,
+                grayText = grayText
             )
         }
+
         item {
-            Card(modifier = Modifier.fillMaxWidth()) {
-                Column(modifier = Modifier.padding(16.dp)) {
-                    Text("Metadatos del cálculo", style = MaterialTheme.typography.titleSmall)
-                    Text("Puntos muestreados: ${niche.points_sampled}", fontSize = 12.sp)
-                    Text("Puntos con datos climáticos: ${niche.points_with_climate}", fontSize = 12.sp)
+            Card(
+                modifier = Modifier.fillMaxWidth(),
+                shape = RoundedCornerShape(16.dp),
+                colors = CardDefaults.cardColors(containerColor = Color.White.copy(alpha = 0.5f))
+            ) {
+                Row(modifier = Modifier.padding(16.dp), verticalAlignment = Alignment.CenterVertically) {
+                    Icon(Icons.Default.Info, contentDescription = null, tint = grayText, modifier = Modifier.size(16.dp))
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Text(
+                        "Muestreo: ${niche.points_sampled} puntos | Válidos: ${niche.points_with_climate}",
+                        style = MaterialTheme.typography.labelSmall,
+                        color = grayText
+                    )
                 }
             }
         }
@@ -221,22 +271,27 @@ fun NicheDetailView(niche: SpeciesNicheEntity) {
 }
 
 @Composable
-fun ClimateSummaryCard(niche: SpeciesNicheEntity) {
-    val climateType = when {
-        niche.temp_opt_max < 15 -> "Frío / Boreal"
-        niche.temp_opt_max in 15.0..25.0 -> "Templado"
-        else -> "Cálido / Tropical"
+fun ClimateSummaryCard(niche: SpeciesNicheEntity, primaryGreen: Color) {
+    val (climateType, icon) = when {
+        niche.temp_opt_max < 15 -> "Frío / Boreal" to "❄"
+        niche.temp_opt_max in 15.0..25.0 -> "Templado" to "🌤"
+        else -> "Cálido / Tropical" to "🌴"
     }
 
     Card(
         modifier = Modifier.fillMaxWidth(),
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.primaryContainer)
+        shape = RoundedCornerShape(24.dp),
+        colors = CardDefaults.cardColors(containerColor = primaryGreen),
     ) {
-        Column(modifier = Modifier.padding(16.dp)) {
-            Text("🌤 Tipo de Clima Probable", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
-            Text(climateType, style = MaterialTheme.typography.headlineSmall)
-            Spacer(modifier = Modifier.height(4.dp))
-            Text("Basado en el rango óptimo de crecimiento.", style = MaterialTheme.typography.bodySmall)
+        Row(
+            modifier = Modifier.padding(24.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Column(modifier = Modifier.weight(1f)) {
+                Text("Tipo de Clima Probable", color = Color.White.copy(alpha = 0.8f), style = MaterialTheme.typography.labelMedium)
+                Text(climateType, color = Color.White, style = MaterialTheme.typography.headlineMedium, fontWeight = FontWeight.Bold)
+            }
+            Text(icon, fontSize = 40.sp)
         }
     }
 }
@@ -244,53 +299,83 @@ fun ClimateSummaryCard(niche: SpeciesNicheEntity) {
 @Composable
 fun NicheFactorCard(
     title: String,
-    icon: androidx.compose.ui.graphics.vector.ImageVector,
+    icon: ImageVector,
     color: Color,
     min: Double,
     optMin: Double,
     optMax: Double,
     max: Double,
     unit: String,
-    description: String
+    darkText: Color,
+    grayText: Color
 ) {
-    Card(modifier = Modifier.fillMaxWidth()) {
-        Column(modifier = Modifier.padding(16.dp)) {
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(24.dp),
+        colors = CardDefaults.cardColors(containerColor = Color.White),
+        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
+    ) {
+        Column(modifier = Modifier.padding(20.dp)) {
             Row(verticalAlignment = Alignment.CenterVertically) {
-                Icon(icon, contentDescription = null, tint = color)
-                Spacer(modifier = Modifier.width(8.dp))
-                Text(title, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+                Surface(color = color.copy(alpha = 0.1f), shape = RoundedCornerShape(8.dp)) {
+                    Icon(icon, contentDescription = null, tint = color, modifier = Modifier.padding(8.dp))
+                }
+                Spacer(modifier = Modifier.width(12.dp))
+                Text(title, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold, color = darkText)
             }
-            
-            Spacer(modifier = Modifier.height(8.dp))
-            
-            Text(description, style = MaterialTheme.typography.bodyMedium)
-            
-            Spacer(modifier = Modifier.height(12.dp))
-            
-            // Barra Visual Simplificada
+
+            Spacer(modifier = Modifier.height(16.dp))
+
+            // Gráfico de Rango Visual
             Column {
                 Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                    Text("${min.toInt()}$unit", fontSize = 10.sp)
-                    Text("${max.toInt()}$unit", fontSize = 10.sp)
+                    Text("Min: ${min.toInt()}$unit", fontSize = 11.sp, color = grayText)
+                    Text("Max: ${max.toInt()}$unit", fontSize = 11.sp, color = grayText)
                 }
-                LinearProgressIndicator(
-                    progress = { 0.5f },
-                    modifier = Modifier.fillMaxWidth().height(8.dp),
-                    color = color,
-                    trackColor = color.copy(alpha = 0.2f)
-                )
-                Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.Center) {
-                    Text("Rango Ideal", fontSize = 10.sp, fontWeight = FontWeight.Bold, color = color)
+                Spacer(modifier = Modifier.height(4.dp))
+                Box(modifier = Modifier.fillMaxWidth().height(12.dp).background(color.copy(alpha = 0.1f), RoundedCornerShape(6.dp))) {
+                    // Aquí se podría calcular la posición real del rango óptimo, por ahora visual:
+                    Box(modifier = Modifier.fillMaxWidth(0.6f).fillMaxHeight().align(Alignment.Center).background(color, RoundedCornerShape(6.dp)))
                 }
             }
-            
-            Spacer(modifier = Modifier.height(12.dp))
-            
-            Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                Text("🔵 Rango favorable: $optMin - $optMax $unit", fontSize = 12.sp)
-                Text("🟡 Rango tolerado: $min - $max $unit", fontSize = 12.sp)
-                Text("⚠ Fuera de este rango: Estrés biótico", fontSize = 12.sp, color = MaterialTheme.colorScheme.error)
+
+            Spacer(modifier = Modifier.height(16.dp))
+
+            Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                InfoChip(label = "Ideal", value = "$optMin - $optMax $unit", color = color)
+                InfoChip(label = "Tolerado", value = "${min.toInt()} - ${max.toInt()} $unit", color = Color.Gray)
             }
         }
+    }
+}
+
+@Composable
+fun InfoChip(label: String, value: String, color: Color) {
+    Surface(
+        color = color.copy(alpha = 0.05f),
+        shape = RoundedCornerShape(8.dp),
+        border = androidx.compose.foundation.BorderStroke(1.dp, color.copy(alpha = 0.2f))
+    ) {
+        Column(modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp)) {
+            Text(label, fontSize = 9.sp, fontWeight = FontWeight.Bold, color = color.copy(alpha = 0.7f))
+            Text(value, fontSize = 12.sp, fontWeight = FontWeight.Bold, color = Color(0xFF1C1B1F))
+        }
+    }
+}
+
+@Composable
+fun EmptyNicheState(grayText: Color) {
+    Column(
+        modifier = Modifier.fillMaxSize().padding(top = 40.dp),
+        horizontalAlignment = Alignment.CenterHorizontally
+    ) {
+        Icon(Icons.Default.Analytics, contentDescription = null, modifier = Modifier.size(64.dp), tint = Color.LightGray)
+        Spacer(modifier = Modifier.height(16.dp))
+        Text(
+            "Sin datos de nicho calculados.\nPresiona el botón superior para generar el análisis.",
+            textAlign = TextAlign.Center,
+            color = grayText,
+            style = MaterialTheme.typography.bodyMedium
+        )
     }
 }
