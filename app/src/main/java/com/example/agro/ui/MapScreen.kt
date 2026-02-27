@@ -7,14 +7,18 @@ import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.Map
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.core.content.ContextCompat
@@ -26,6 +30,7 @@ import com.google.android.gms.maps.GoogleMap
 import com.google.android.gms.maps.MapView
 import com.google.android.gms.maps.model.LatLng
 import com.google.android.gms.maps.model.LatLngBounds
+import com.google.android.gms.maps.model.MapStyleOptions
 import com.google.android.gms.maps.model.MarkerOptions
 
 @Composable
@@ -39,7 +44,6 @@ fun MapScreen(repository: AgroRepository) {
             ) == PackageManager.PERMISSION_GRANTED
         )
     }
-
 
     val launcher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.RequestMultiplePermissions(),
@@ -59,18 +63,49 @@ fun MapScreen(repository: AgroRepository) {
         }
     }
 
+    val primaryGreen = Color(0xFF2E7D32)
+    val secondaryGreen = Color(0xFFE8F5E9)
+
     if (hasLocationPermission) {
-        MapWithSearch(repository)
+        MapWithSearch(repository, primaryGreen, secondaryGreen)
     } else {
-        Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-            Text(text = "Se requieren permisos de ubicación para ver el mapa.")
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .background(Brush.verticalGradient(listOf(secondaryGreen, Color.White))),
+            contentAlignment = Alignment.Center
+        ) {
+            Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                Icon(Icons.Default.Map, contentDescription = null, modifier = Modifier.size(64.dp), tint = primaryGreen)
+                Spacer(modifier = Modifier.height(16.dp))
+                Text(
+                    text = "Se requieren permisos de ubicación para ver el mapa.",
+                    color = Color(0xFF1C1B1F),
+                    style = MaterialTheme.typography.bodyLarge,
+                    fontWeight = FontWeight.Medium
+                )
+                Spacer(modifier = Modifier.height(24.dp))
+                Button(
+                    onClick = {
+                        launcher.launch(
+                            arrayOf(
+                                Manifest.permission.ACCESS_FINE_LOCATION,
+                                Manifest.permission.ACCESS_COARSE_LOCATION
+                            )
+                        )
+                    },
+                    colors = ButtonDefaults.buttonColors(containerColor = primaryGreen)
+                ) {
+                    Text("Conceder Permisos")
+                }
+            }
         }
     }
 }
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun MapWithSearch(repository: AgroRepository) {
+fun MapWithSearch(repository: AgroRepository, primaryGreen: Color, secondaryGreen: Color) {
     var importedSpecies by remember { mutableStateOf<List<SuccessfulImportEntity>>(emptyList()) }
     var selectedSpecies by remember { mutableStateOf<SuccessfulImportEntity?>(null) }
     var allOccurrences by remember { mutableStateOf<List<OccurrenceEntity>>(emptyList()) }
@@ -83,12 +118,10 @@ fun MapWithSearch(repository: AgroRepository) {
     var expandedStates by remember { mutableStateOf(false) }
     var isLoading by remember { mutableStateOf(false) }
 
-    // Cargar especies importadas
     LaunchedEffect(Unit) {
         importedSpecies = repository.getSuccessfulImports()
     }
 
-    // Cargar todas las ocurrencias de la especie seleccionada
     LaunchedEffect(selectedSpecies) {
         selectedSpecies?.let { species ->
             isLoading = true
@@ -96,14 +129,13 @@ fun MapWithSearch(repository: AgroRepository) {
             if (result.isSuccess) {
                 allOccurrences = result.getOrDefault(emptyList())
                 availableStates = allOccurrences.mapNotNull { it.stateProvince }.distinct().sorted()
-                selectedState = null // Resetear filtro al cambiar de especie
+                selectedState = null
                 filteredOccurrences = allOccurrences
             }
             isLoading = false
         }
     }
 
-    // Filtrar localmente cuando cambia el estado seleccionado
     LaunchedEffect(selectedState, allOccurrences) {
         filteredOccurrences = if (selectedState == null) {
             allOccurrences
@@ -113,102 +145,128 @@ fun MapWithSearch(repository: AgroRepository) {
     }
 
     Box(modifier = Modifier.fillMaxSize()) {
-        GoogleMapContainer(repository, filteredOccurrences)
+        GoogleMapContainer(repository, filteredOccurrences, selectedSpecies?.commonName)
 
-        Column(
+        // Panel de Control Flotante
+        Card(
             modifier = Modifier
                 .fillMaxWidth()
                 .padding(16.dp)
-                .align(Alignment.TopCenter)
-                .background(MaterialTheme.colorScheme.surface.copy(alpha = 0.9f), MaterialTheme.shapes.medium)
-                .padding(8.dp)
+                .align(Alignment.TopCenter),
+            shape = RoundedCornerShape(24.dp),
+            colors = CardDefaults.cardColors(containerColor = Color.White.copy(alpha = 0.95f)),
+            elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
         ) {
-            // Selector de Especies
-            ExposedDropdownMenuBox(
-                expanded = expandedSpecies,
-                onExpandedChange = { expandedSpecies = !expandedSpecies }
-            ) {
-                TextField(
-                    value = selectedSpecies?.commonName ?: "Seleccionar especie...",
-                    onValueChange = {},
-                    readOnly = true,
-                    label = { Text("Especie") },
-                    trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = expandedSpecies) },
-                    modifier = Modifier.menuAnchor().fillMaxWidth(),
-                    colors = TextFieldDefaults.colors(
-                        focusedContainerColor = Color.Transparent,
-                        unfocusedContainerColor = Color.Transparent
-                    )
+            Column(modifier = Modifier.padding(16.dp)) {
+                Text(
+                    "Filtros de Mapa",
+                    style = MaterialTheme.typography.titleSmall,
+                    color = primaryGreen,
+                    fontWeight = FontWeight.Bold,
+                    modifier = Modifier.padding(bottom = 8.dp)
                 )
-                ExposedDropdownMenu(
-                    expanded = expandedSpecies,
-                    onDismissRequest = { expandedSpecies = false }
-                ) {
-                    importedSpecies.forEach { species ->
-                        DropdownMenuItem(
-                            text = { Text("${species.commonName} (${species.query})") },
-                            onClick = {
-                                selectedSpecies = species
-                                expandedSpecies = false
-                            }
-                        )
-                    }
-                }
-            }
 
-            // Selector de Estados (Solo aparece si hay especie seleccionada)
-            if (selectedSpecies != null) {
-                Spacer(modifier = Modifier.height(8.dp))
+                // Selector de Especies
                 ExposedDropdownMenuBox(
-                    expanded = expandedStates,
-                    onExpandedChange = { expandedStates = !expandedStates }
+                    expanded = expandedSpecies,
+                    onExpandedChange = { expandedSpecies = it }
                 ) {
-                    TextField(
-                        value = selectedState ?: "Todos los estados",
+                    OutlinedTextField(
+                        value = selectedSpecies?.commonName ?: "Seleccionar especie...",
                         onValueChange = {},
                         readOnly = true,
-                        label = { Text("Filtrar por Estado") },
-                        trailingIcon = {
-                            if (selectedState != null) {
-                                IconButton(onClick = { selectedState = null }) {
-                                    Icon(Icons.Default.Close, contentDescription = "Limpiar")
-                                }
-                            } else {
-                                ExposedDropdownMenuDefaults.TrailingIcon(expanded = expandedStates)
-                            }
-                        },
+                        label = { Text("Especie", color = primaryGreen) },
+                        trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = expandedSpecies) },
                         modifier = Modifier.menuAnchor().fillMaxWidth(),
-                        colors = TextFieldDefaults.colors(
-                            focusedContainerColor = Color.Transparent,
-                            unfocusedContainerColor = Color.Transparent
+                        shape = RoundedCornerShape(12.dp),
+                        colors = OutlinedTextFieldDefaults.colors(
+                            focusedBorderColor = primaryGreen,
+                            unfocusedBorderColor = Color.LightGray,
+                            focusedContainerColor = Color.White,
+                            unfocusedContainerColor = Color.White
                         )
                     )
-                    ExposedDropdownMenu(
-                        expanded = expandedStates,
-                        onDismissRequest = { expandedStates = false }
-                    ) {
-                        DropdownMenuItem(
-                            text = { Text("Todos los estados") },
-                            onClick = {
-                                selectedState = null
-                                expandedStates = false
+                    MaterialTheme(colorScheme = MaterialTheme.colorScheme.copy(surface = Color.White)) {
+                        ExposedDropdownMenu(
+                            expanded = expandedSpecies,
+                            onDismissRequest = { expandedSpecies = false }
+                        ) {
+                            importedSpecies.forEach { species ->
+                                DropdownMenuItem(
+                                    text = { Text("${species.commonName} (${species.query})", color = Color(0xFF1C1B1F)) },
+                                    onClick = {
+                                        selectedSpecies = species
+                                        expandedSpecies = false
+                                    }
+                                )
                             }
-                        )
-                        availableStates.forEach { state ->
-                            DropdownMenuItem(
-                                text = { Text(state) },
-                                onClick = {
-                                    selectedState = state
-                                    expandedStates = false
-                                }
-                            )
                         }
                     }
                 }
-            }
-            
-            if (isLoading) {
-                LinearProgressIndicator(modifier = Modifier.fillMaxWidth().padding(top = 4.dp))
+
+                if (selectedSpecies != null) {
+                    Spacer(modifier = Modifier.height(12.dp))
+                    ExposedDropdownMenuBox(
+                        expanded = expandedStates,
+                        onExpandedChange = { expandedStates = it }
+                    ) {
+                        OutlinedTextField(
+                            value = selectedState ?: "Todos los estados",
+                            onValueChange = {},
+                            readOnly = true,
+                            label = { Text("Estado", color = primaryGreen) },
+                            trailingIcon = {
+                                if (selectedState != null) {
+                                    IconButton(onClick = { selectedState = null }) {
+                                        Icon(Icons.Default.Close, contentDescription = "Limpiar", tint = Color.Red)
+                                    }
+                                } else {
+                                    ExposedDropdownMenuDefaults.TrailingIcon(expanded = expandedStates)
+                                }
+                            },
+                            modifier = Modifier.menuAnchor().fillMaxWidth(),
+                            shape = RoundedCornerShape(12.dp),
+                            colors = OutlinedTextFieldDefaults.colors(
+                                focusedBorderColor = primaryGreen,
+                                unfocusedBorderColor = Color.LightGray,
+                                focusedContainerColor = Color.White,
+                                unfocusedContainerColor = Color.White
+                            )
+                        )
+                        MaterialTheme(colorScheme = MaterialTheme.colorScheme.copy(surface = Color.White)) {
+                            ExposedDropdownMenu(
+                                expanded = expandedStates,
+                                onDismissRequest = { expandedStates = false }
+                            ) {
+                                DropdownMenuItem(
+                                    text = { Text("Todos los estados", color = Color(0xFF1C1B1F)) },
+                                    onClick = {
+                                        selectedState = null
+                                        expandedStates = false
+                                    }
+                                )
+                                availableStates.forEach { state ->
+                                    DropdownMenuItem(
+                                        text = { Text(state, color = Color(0xFF1C1B1F)) },
+                                        onClick = {
+                                            selectedState = state
+                                            expandedStates = false
+                                        }
+                                    )
+                                }
+                            }
+                        }
+                    }
+                }
+                
+                if (isLoading) {
+                    Spacer(modifier = Modifier.height(8.dp))
+                    LinearProgressIndicator(
+                        modifier = Modifier.fillMaxWidth(),
+                        color = primaryGreen,
+                        trackColor = secondaryGreen
+                    )
+                }
             }
         }
     }
@@ -216,7 +274,7 @@ fun MapWithSearch(repository: AgroRepository) {
 
 @SuppressLint("MissingPermission")
 @Composable
-fun GoogleMapContainer(repository: AgroRepository, occurrences: List<OccurrenceEntity>) {
+fun GoogleMapContainer(repository: AgroRepository, occurrences: List<OccurrenceEntity>, speciesName: String?) {
     val context = LocalContext.current
     val mapView = remember { MapView(context) }
 
@@ -227,14 +285,40 @@ fun GoogleMapContainer(repository: AgroRepository, occurrences: List<OccurrenceE
                 getMapAsync { googleMap ->
                     googleMap.isMyLocationEnabled = true
                     googleMap.uiSettings.isMyLocationButtonEnabled = true
-                    updateMarkers(googleMap, occurrences)
+                    googleMap.uiSettings.isZoomControlsEnabled = true
+                    
+                    // Aplicar estilo de mapa "Retro/Nature" mediante JSON
+                    val mapStyleJson = """
+                        [
+                          {
+                            "featureType": "landscape",
+                            "stylers": [{ "color": "#e8f5e9" }]
+                          },
+                          {
+                            "featureType": "water",
+                            "stylers": [{ "color": "#81d4fa" }]
+                          },
+                          {
+                            "featureType": "road",
+                            "stylers": [{ "visibility": "simplified" }]
+                          },
+                          {
+                            "featureType": "poi.park",
+                            "stylers": [{ "color": "#c8e6c9" }]
+                          }
+                        ]
+                    """.trimIndent()
+                    
+                    googleMap.setMapStyle(MapStyleOptions(mapStyleJson))
+                    
+                    updateMarkers(googleMap, occurrences, speciesName)
                 }
             }
         },
         modifier = Modifier.fillMaxSize(),
         update = {
             it.getMapAsync { googleMap ->
-                updateMarkers(googleMap, occurrences)
+                updateMarkers(googleMap, occurrences, speciesName)
             }
             it.onResume()
         }
@@ -248,10 +332,10 @@ fun GoogleMapContainer(repository: AgroRepository, occurrences: List<OccurrenceE
     }
 }
 
-private fun updateMarkers(googleMap: GoogleMap, occurrences: List<OccurrenceEntity>) {
+private fun updateMarkers(googleMap: GoogleMap, occurrences: List<OccurrenceEntity>, speciesName: String?) {
     googleMap.clear()
     if (occurrences.isEmpty()) {
-        val mexicoCity = LatLng(19.4326, -99.1332)
+        val mexicoCity = LatLng(23.6345, -102.5528) // Centro de México
         googleMap.moveCamera(CameraUpdateFactory.newLatLngZoom(mexicoCity, 5f))
         return
     }
@@ -262,7 +346,7 @@ private fun updateMarkers(googleMap: GoogleMap, occurrences: List<OccurrenceEnti
         googleMap.addMarker(
             MarkerOptions()
                 .position(pos)
-                .title("Ocurrencia")
+                .title("Registro de ${speciesName ?: "Especie"}")
                 .snippet("Estado: ${occurrence.stateProvince ?: "N/A"}")
         )
         builder.include(pos)
@@ -270,11 +354,11 @@ private fun updateMarkers(googleMap: GoogleMap, occurrences: List<OccurrenceEnti
 
     try {
         val bounds = builder.build()
-        googleMap.animateCamera(CameraUpdateFactory.newLatLngBounds(bounds, 100))
+        googleMap.animateCamera(CameraUpdateFactory.newLatLngBounds(bounds, 150))
     } catch (e: Exception) {
         if (occurrences.isNotEmpty()) {
             val first = LatLng(occurrences[0].latitude, occurrences[0].longitude)
-            googleMap.moveCamera(CameraUpdateFactory.newLatLngZoom(first, 10f))
+            googleMap.moveCamera(CameraUpdateFactory.newLatLngZoom(first, 8f))
         }
     }
 }

@@ -5,20 +5,31 @@ import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.activity.viewModels
+import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.AccountBox
+import androidx.compose.material.icons.filled.AccountCircle
 import androidx.compose.material.icons.filled.Agriculture
+import androidx.compose.material.icons.filled.Logout
 import androidx.compose.material.icons.filled.Public
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.Spa
 import androidx.compose.material.icons.filled.Thermostat
 import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.adaptive.navigationsuite.NavigationSuiteScaffold
@@ -30,9 +41,14 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import com.example.agro.data.AgroRepository
 import com.example.agro.data.AppDatabase
 import com.example.agro.ui.ClimateScreen
@@ -124,7 +140,7 @@ fun AgroApp(repository: AgroRepository, onLogout: () -> Unit) {
                             repository = repository,
                             onNavigateToSearch = { currentDestination = AppDestinations.SEARCH_SCIENTIFIC }
                         )
-                        AppDestinations.PROFILE -> ProfileScreen(onLogout = onLogout)
+                        AppDestinations.EXIT -> ExitScreen(onLogout = onLogout)
                         else -> {}
                     }
                 }
@@ -134,16 +150,67 @@ fun AgroApp(repository: AgroRepository, onLogout: () -> Unit) {
 }
 
 @Composable
-fun ProfileScreen(onLogout: () -> Unit) {
-    Column(
-        modifier = Modifier.fillMaxSize(),
-        horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = androidx.compose.foundation.layout.Arrangement.Center
+fun ExitScreen(onLogout: () -> Unit) {
+    val primaryGreen = Color(0xFF2E7D32)
+    val secondaryGreen = Color(0xFFE8F5E9)
+
+    Box(
+        modifier = Modifier
+            .fillMaxSize()
+            .background(Brush.verticalGradient(listOf(secondaryGreen, Color.White)))
     ) {
-        Text(text = "Profile")
-        androidx.compose.foundation.layout.Spacer(modifier = Modifier.padding(16.dp))
-        Button(onClick = onLogout) {
-            Text("Logout")
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(24.dp),
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.Center
+        ) {
+            Icon(
+                imageVector = Icons.Default.Spa,
+                contentDescription = null,
+                tint = primaryGreen,
+                modifier = Modifier.size(100.dp)
+            )
+
+            Spacer(modifier = Modifier.height(24.dp))
+
+            Text(
+                text = "¡Gracias por usar Agro!",
+                style = MaterialTheme.typography.headlineMedium,
+                fontWeight = FontWeight.Bold,
+                color = primaryGreen,
+                textAlign = TextAlign.Center
+            )
+
+            Spacer(modifier = Modifier.height(16.dp))
+
+            Text(
+                text = "Esperamos que la información recopilada sea de gran utilidad para tus proyectos agrícolas. Vuelve pronto para seguir investigando.",
+                style = MaterialTheme.typography.bodyLarge,
+                color = Color(0xFF49454F),
+                textAlign = TextAlign.Center,
+                lineHeight = 24.sp
+            )
+
+            Spacer(modifier = Modifier.height(48.dp))
+
+            Button(
+                onClick = onLogout,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(56.dp),
+                shape = RoundedCornerShape(16.dp),
+                colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFD32F2F))
+            ) {
+                Icon(Icons.Default.Logout, contentDescription = null)
+                Spacer(modifier = Modifier.width(8.dp))
+                Text(
+                    "Cerrar Sesión",
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.Bold
+                )
+            }
         }
     }
 }
@@ -159,7 +226,7 @@ enum class AppDestinations(
     CLIMATE("Nichos", Icons.Filled.Thermostat),
     SPECIES("Especies", Icons.Default.Spa),
     SEARCH_SCIENTIFIC("Buscar", Icons.Default.Search, true),
-    PROFILE("Profile", Icons.Default.AccountBox),
+    EXIT("Cuenta", Icons.Default.AccountCircle),
 }
 
 @Composable
